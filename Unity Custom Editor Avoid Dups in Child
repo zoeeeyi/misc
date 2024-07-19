@@ -1,0 +1,55 @@
+/// Summary: these codes can be used to avoid duplicating field to appear in child class inspector,
+/// when inheriting from base class
+/// Basic idea is to create a list of drawn fields in parent class and search in that list for dups,
+/// in child classes
+
+public class BaseClassEditor : Editor
+{
+    protected HashSet<string> drawnProperties = new HashSet<string>();
+
+    protected void DrawProperty(string propName) 
+    {
+        if (string.IsNullOrEmpty(propName)) return;
+
+        SerializedProperty property = serializedObject.FindProperty(propName);
+        if (property != null) 
+        {
+            EditorGUILayout.PropertyField(property, true);
+            drawnProperties.Add(propName);
+        }
+    }
+
+    public override void OnInspectorGUI()
+    {
+        serializedObject.Update();
+
+        // Draw properties manually
+        DrawProperty("propertyName1");
+        DrawProperty("propertyName2");
+        
+        serializedObject.ApplyModifiedProperties();
+    }
+}
+
+[CustomEditor(typeof(DerivedClass), true)]
+public class DerivedClassEditor : BaseClassEditor
+{
+    public override void OnInspectorGUI()
+    {
+        base.OnInspectorGUI();
+
+        serializedObject.Update();
+
+        // Draw not yet drawn properties
+        SerializedProperty property = serializedObject.GetIterator();
+        while (property.NextVisible(true))
+        {
+            if (!drawnProperties.Contains(property.name))
+            {
+                EditorGUILayout.PropertyField(property, true);
+            }
+        }
+        
+        serializedObject.ApplyModifiedProperties();
+    }
+}
